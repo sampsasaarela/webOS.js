@@ -15,6 +15,8 @@
 
 //PalmService API featureset
 
+var refs = {};
+
 function LS2Request(uri, params) {
 	this.uri = uri;
 	params = params || {};
@@ -52,6 +54,9 @@ LS2Request.prototype.send = function() {
 		console.error("PalmServiceBridge not found.");
 		return;
 	}
+	if(this.ts && refs[this.ts]) {
+		delete refs[this.ts];
+	}
 	this.bridge = new PalmServiceBridge();
 	var self = this;
 	this.bridge.onservicecallback = this.callback = function(msg) {
@@ -83,20 +88,27 @@ LS2Request.prototype.send = function() {
 		}
 		if(!self.subscribe) {
 			self.cancel();
+		} else if(self.ts && refs[self.ts]) {
+			delete refs[self.ts];
 		}
 	};
+	self.ts = performance.now();
+	refs[self.ts] = self;
 	this.bridge.call(this.uri, JSON.stringify(this.params));
 };
 
 LS2Request.prototype.cancel = function() {
 	this.cancelled = true;
 	if(this.resubscribeJob) {
-			clearTimeout(this.delayID)
-		}
-		if(this.bridge) {
-			this.bridge.cancel();
-			this.bridge = undefined;
-		}
+		clearTimeout(this.delayID)
+	}
+	if(this.bridge) {
+		this.bridge.cancel();
+		this.bridge = undefined;
+	}
+	if(this.ts && refs[this.ts]) {
+		delete refs[this.ts];
+	}
 };
 
 LS2Request.prototype.toString = function() {
